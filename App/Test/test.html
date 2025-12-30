@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GridFS Image Upload Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 20px;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+            padding: 10px;
+            border: 2px dashed #4CAF50;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.delete {
+            background-color: #f44336;
+        }
+        button.delete:hover {
+            background-color: #da190b;
+        }
+        #response {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        #imageGallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .image-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            background: white;
+        }
+        .image-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .image-info {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+        .image-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 5px;
+        }
+        .image-actions button {
+            flex: 1;
+            padding: 8px;
+            font-size: 12px;
+        }
+        .error {
+            border-left-color: #f44336;
+            background-color: #ffebee;
+        }
+        .success {
+            border-left-color: #4CAF50;
+            background-color: #e8f5e9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GridFS Image Upload Test</h1>
+
+        <h2>Upload Image</h2>
+        <input type="file" id="fileInput" accept="image/*">
+        <button onclick="uploadImage()">Upload Image</button>
+
+        <h2>Get All Images</h2>
+        <button onclick="getAllImages()">Load All Images</button>
+
+        <div id="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>Image Gallery</h2>
+        <div id="imageGallery"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8080/test';
+
+        function showResponse(data, isError = false) {
+            const responseDiv = document.getElementById('response');
+            responseDiv.textContent = JSON.stringify(data, null, 2);
+            responseDiv.className = isError ? 'error' : 'success';
+        }
+
+        async function uploadImage() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showResponse({ error: 'Please select an image file' }, true);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch(`${API_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResponse(data);
+                    fileInput.value = '';
+                    // Reload gallery
+                    setTimeout(() => getAllImages(), 500);
+                } else {
+                    showResponse(data, true);
+                }
+            } catch (error) {
+                showResponse({ error: error.message }, true);
+            }
+        }
+
+        async function getAllImages() {
+            try {
+                const response = await fetch(`${API_URL}/images`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResponse(data);
+                    displayImageGallery(data.data);
+                } else {
+                    showResponse(data, true);
+                }
+            } catch (error) {
+                showResponse({ error: error.message }, true);
+            }
+        }
+
+        function displayImageGallery(images) {
+            const gallery = document.getElementById('imageGallery');
+
+            if (!images || images.length === 0) {
+                gallery.innerHTML = '<p>No images found</p>';
+                return;
+            }
+
+            gallery.innerHTML = images.map(image => `
+                <div class="image-card">
+                    <img src="${API_URL}/image/${image.fileId}" alt="${image.filename}">
+                    <div class="image-info">
+                        <strong>${image.filename}</strong><br>
+                        Size: ${(image.size / 1024).toFixed(2)} KB<br>
+                        Type: ${image.contentType}<br>
+                        Uploaded: ${new Date(image.uploadDate).toLocaleString()}<br>
+                        ID: ${image.fileId}
+                    </div>
+                    <div class="image-actions">
+                        <button onclick="viewImage('${image.fileId}')">View</button>
+                        <button onclick="getMetadata('${image.fileId}')">Info</button>
+                        <button class="delete" onclick="deleteImage('${image.fileId}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function viewImage(fileId) {
+            window.open(`${API_URL}/image/${fileId}`, '_blank');
+        }
+
+        async function getMetadata(fileId) {
+            try {
+                const response = await fetch(`${API_URL}/metadata/${fileId}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResponse(data);
+                } else {
+                    showResponse(data, true);
+                }
+            } catch (error) {
+                showResponse({ error: error.message }, true);
+            }
+        }
+
+        async function deleteImage(fileId) {
+            if (!confirm('Are you sure you want to delete this image?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/image/${fileId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResponse(data);
+                    // Reload gallery
+                    setTimeout(() => getAllImages(), 500);
+                } else {
+                    showResponse(data, true);
+                }
+            } catch (error) {
+                showResponse({ error: error.message }, true);
+            }
+        }
+
+        // Load images on page load
+        window.addEventListener('load', () => {
+            getAllImages();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,708 @@
+findOne
+        //         {
+        //   "function": "findOne",
+        //   "collection": "orders",
+        //   "filter": { "orderId": "$params.id" },
+        //   "projection": { "_id": 0, "customerId": 1 },
+        //   "output": "orderDoc"
+        // }
+
+find
+//  {
+        //   "function": "find",
+        //   "collection": "logs",
+        //   "filter": { "level": "error" },
+        //   "projection": { "_id": 0, "msg": 1 },
+        //   "sort": { "timestamp": -1 },
+        //   "limit": 5,
+        //   "output": "recentErrors"
+        // }
+aggregate
+// {
+        //   "function": "aggregate",
+        //   "collection": "events",
+        //   "pipeline": [
+        //     { "$match": { "severity": "high" } },
+        //     { "$group": { "_id": "$type", "total": { "$sum": 1 } } }
+        //   ],
+        //   "output": "severitySummary"
+        // }
+lookup
+ //         {
+        //   "function": "lookup",
+        //   "from": "invoices",
+        //   "localField": "$orderDoc.customerId",
+        //   "foreignField": "customerId",
+        //   "pipelineFilter": {
+        //     "status": "pending",
+        //     "issuedDate": {
+        //       "$gte": {
+        //         "$dateSubtract": {
+        //           "startDate": "$$NOW",
+        //           "unit": "day",
+        //           "amount": 30
+        //         }
+        //       }
+        //     }
+        //   },
+        //   "projection": { "_id": 0, "invoiceId": 1 },
+        //   "output": "openInvoices"
+        // }
+
+graphlookup
+
+  //       {
+        //   "params": { "startId": "E1" },
+        //   "steps": [
+        //     {
+        //       "id": "chainWalk",
+        //       "function": "graphLookup",
+        //       "collection": "employees",
+        //       "from": "employees",
+        //       "startWith": "$params.startId",
+        //       "connectFromField": "managerId",
+        //       "connectToField": "employeeId",
+        //       "as": "managementChain",
+        //       "depthField": "level"
+        //     }
+        //   ]
+        // }
+
+sum
+
+
+        //       {
+        //   "steps": [
+        //     {
+        //       "id": "totalPaid",
+        //       "function": "sum",
+        //       "collection": "orders",
+        //       "field": "amount",
+        //       "filter": { "status": "paid" },
+        //       "output": "paidAmount"
+        //     }
+        //   ]
+        // }
+count
+
+        //       {
+        //   "steps": [
+        //     {
+        //       "id": "openIssues",
+        //       "function": "count",
+        //       "collection": "issues",
+        //       "filter": { "status": "open" },
+        //       "output": "openIssueCount"
+        //     }
+        //   ]
+        // }
+joinAttributes
+
+// {
+//   "id": "enrichedAttributes",
+//   "function": "joinAttributes",
+//   "left": "$attributeSets",
+//   "right": "$attributeSets1",
+//   "localField": "Owner Org",
+//   "foreignField": "Name",
+//   "mergeFields": ["CPH", "Parent"],
+//   "output": "enrichedAttributes"
+// }
+
+
+
+
+Sample Input post Correlation json
+
+{
+    "correlationName": "displayComponent1",
+    "correlationDesc": "New correlation",
+    "inputParameters": {
+        "required": [
+            "ip1",
+            "ip2"
+        ],
+        "properties": [
+            {
+                "name": "ip1",
+                "isrequired": true,
+                "type": "Double"
+            },
+            {
+                "name": "ip2",
+                "isrequired": true,
+                "type": "Double"
+            }
+        ]
+    },
+    "outputParameters": {
+        "required": [
+            "op1"
+        ],
+        "properties": [
+            {
+                "name": "op1",
+                "isrequired": true,
+                "type": "Double"
+            }
+        ]
+    },
+    "correlationTemplate": [
+        {
+            "id": "getEntity",
+            "function": "findOne",
+            "collection": "Entity",
+            "filter": {
+                "entityName": "op1"
+            },
+            "projection": {
+                "_id": 0,
+                "entityId": 1,
+                "entityDesc": 1,
+                "attributeTemplate": 1
+            },
+            "output": "entity"
+        },
+        {
+            "id": "getInstances",
+            "function": "lookup",
+            "from": "Instance",
+            "localField": "$entity.entityId",
+            "foreignField": "entityLookupId",
+            "projection": {
+                "_id": 0,
+                "instanceId": 1
+            },
+            "output": "instances"
+        },
+        {
+            "id": "attributeSets",
+            "function": "aggregate",
+            "collection": "Attributes",
+            "pipeline": [
+                {
+                    "$match": {
+                        "instanceId": {
+                            "$in": "$instances.instanceId"
+                        }
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 0,
+                        "instanceId": 1,
+                        "attributeName": 1,
+                        "value": 1
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": "$instanceId",
+                        "attributes": {
+                            "$push": {
+                                "k": "$attributeName",
+                                "v": "$value"
+                            }
+                        }
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 1,
+                        "attributes": {
+                            "$arrayToObject": "$attributes"
+                        }
+                    }
+                },
+                {
+                    "$replaceRoot": {
+                        "newRoot": {
+                            "$mergeObjects": [
+                                {
+                                    "_id": "$_id"
+                                },
+                                "$attributes"
+                            ]
+                        }
+                    }
+                }
+            ],
+            "output": "attributeSets"
+        },
+        {
+            "id": "getEntity1",
+            "function": "findOne",
+            "collection": "Entity",
+            "filter": {
+                "entityName": "Orgs"
+            },
+            "projection": {
+                "_id": 0,
+                "entityId": 1,
+                "entityDesc": 1,
+                "attributeTemplate": 1
+            },
+            "output": "entity1"
+        },
+        {
+            "id": "getInstances1",
+            "function": "lookup",
+            "from": "Instance",
+            "localField": "$entity1.entityId",
+            "foreignField": "entityLookupId",
+            "projection": {
+                "_id": 0,
+                "instanceId": 1
+            },
+            "output": "instances1"
+        },
+        {
+            "id": "attributeSets1",
+            "function": "aggregate",
+            "collection": "Attributes",
+            "pipeline": [
+                {
+                    "$match": {
+                        "instanceId": {
+                            "$in": "$instances1.instanceId"
+                        }
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 0,
+                        "instanceId": 1,
+                        "attributeName": 1,
+                        "value": 1
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": "$instanceId",
+                        "attributes": {
+                            "$push": {
+                                "k": "$attributeName",
+                                "v": "$value"
+                            }
+                        }
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 1,
+                        "attributes": {
+                            "$arrayToObject": "$attributes"
+                        }
+                    }
+                },
+                {
+                    "$replaceRoot": {
+                        "newRoot": {
+                            "$mergeObjects": [
+                                {
+                                    "_id": "$_id"
+                                },
+                                "$attributes"
+                            ]
+                        }
+                    }
+                }
+            ],
+            "output": "attributeSets1"
+        },
+        {
+            "id": "getEntity2",
+            "function": "findOne",
+            "collection": "Entity",
+            "filter": {
+                "entityName": "Users"
+            },
+            "projection": {
+                "_id": 0,
+                "entityId": 1,
+                "entityDesc": 1,
+                "attributeTemplate": 1
+            },
+            "output": "entity2"
+        },
+        {
+            "id": "getInstances2",
+            "function": "lookup",
+            "from": "Instance",
+            "localField": "$entity2.entityId",
+            "foreignField": "entityLookupId",
+            "projection": {
+                "_id": 0,
+                "instanceId": 1
+            },
+            "output": "instances2"
+        },
+        {
+            "id": "attributeSets2",
+            "function": "aggregate",
+            "collection": "Attributes",
+            "pipeline": [
+                {
+                    "$match": {
+                        "instanceId": {
+                            "$in": "$instances2.instanceId"
+                        }
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 0,
+                        "instanceId": 1,
+                        "attributeName": 1,
+                        "value": 1
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": "$instanceId",
+                        "attributes": {
+                            "$push": {
+                                "k": "$attributeName",
+                                "v": "$value"
+                            }
+                        }
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 1,
+                        "attributes": {
+                            "$arrayToObject": "$attributes"
+                        }
+                    }
+                },
+                {
+                    "$replaceRoot": {
+                        "newRoot": {
+                            "$mergeObjects": [
+                                {
+                                    "_id": "$_id"
+                                },
+                                "$attributes"
+                            ]
+                        }
+                    }
+                }
+            ],
+            "output": "attributeSets2"
+        },
+        {
+            "id": "lookupJoin",
+            "function": "joinAttributes",
+            "left": "$attributeSets",
+            "right": "$attributeSets1",
+            "localField": "Owner Org",
+            "foreignField": "Name",
+            "mergeFields": [
+                "CPH",
+                "Parent"
+            ],
+            "filter": {
+                "Status": [
+                    "Running",
+                    "Standby"
+                ]
+            },
+            "projection": {
+                "_id": 1,
+                "Name": 1,
+                "Status": 1,
+                "CPH": 1
+            },
+            "output": "lookupJoin"
+        },
+        {
+            "id": "FinalLookupJoin",
+            "function": "joinAttributes",
+            "left": "$lookupJoin",
+            "right": "$attributeSets2",
+            "localField": "CPH",
+            "foreignField": "Name",
+            "mergeFields": [
+                "Email"
+            ],
+            "output": "Final"
+        },
+        {
+            "id": "mapDisplay",
+            "function": "mapDisplayComp",
+            "source": "attributeSets1",
+            "mapping": {
+                "Parent": "DC_CARD1",
+                "CPH": "DC_CARD2"
+            }
+        }
+    ]
+}
+
+
+
+CorrelationJs
+{
+  "jsCode": "const ip1 = {'op1':'PUMP','op2':'Orgs'}; const ip2 = {'op1':'PUMP'};const data = await correlationTemplate('68b03a2f03233f14e0e9cd48', ip1); const data1 = await correlationTemplate('687785fe65a49090fd4f8ab6',ip2); const total = data.totalMaxCapacity; const col = data1.Final; const result = {'total':total,'Collection':col}; return data"
+}
+
+
+
+
+Calculation Template:
+{
+  "_id": {
+    "$oid": "68aed9e69bbf68a9600d3a8a"
+  },
+  "type": "Calculation Engine",
+  "calculationId": "68aed9e69bbf68a9600d3a8a",
+  "calculationName": "Pump Speed Calculation",
+  "calculationDesc": "Pump Speed Calculation Desc",
+  "inputAttributes": {
+    "required": [
+      "A",
+      "B",
+      "C"
+    ],
+    "properties": [
+      {
+        "name": "A",
+        "isrequired": true,
+        "type": "Double"
+      },
+      {
+        "name": "B",
+        "isrequired": true,
+        "type": "Double"
+      },
+      {
+        "name": "C",
+        "isrequired": true,
+        "type": ""
+      }
+    ]
+  },
+  "outputAttributes": {
+    "required": [
+      "Average",
+      "Sum"
+    ],
+    "properties": [
+      {
+        "name": "Average",
+        "isrequired": true,
+        "type": "Double"
+      },
+      {
+        "name": "Sum",
+        "isrequired": true,
+        "type": "Double"
+      }
+    ]
+  },
+  "calculationLogic": "Average = (A + B) / 2;Sum = A + B + C;",
+  "internalJsonAttr": [
+    "A",
+    "B",
+    "C",
+    "Average",
+    "Sum"
+  ],
+  "orgId": "",
+  "orgName": "",
+  "appId": "68131a5224f7533bac7a0ce5",
+  "appName": "POIS",
+  "createdOn": {
+    "$date": "2025-08-27T10:11:50.661Z"
+  }
+}
+
+
+
+Correlation template:
+{
+  "_id": {
+    "$oid": "68b6a4510d68e43c3c0f114a"
+  },
+  "type": "Correlation Engine",
+  "correlationId": "68b6a4510d68e43c3c0f114a",
+  "correlationName": "displayComponent99",
+  "correlationDesc": "New correlation",
+  "inputParameters": {
+    "required": [
+      "ip1",
+      "ip2"
+    ],
+    "properties": [
+      {
+        "name": "ip1",
+        "isrequired": true,
+        "type": "Double"
+      },
+      {
+        "name": "ip2",
+        "isrequired": true,
+        "type": "Double"
+      }
+    ]
+  },
+  "outputParameters": {
+    "required": [
+      "op1"
+    ],
+    "properties": [
+      {
+        "name": "op1",
+        "isrequired": true,
+        "type": "Double"
+      }
+    ]
+  },
+  "internalJson": [
+    "ip1",
+    "ip2",
+    "op1"
+  ],
+  "correlationTemplate": [
+    {
+      "function": "findOne",
+      "logic": {
+        "id": "getEntity",
+        "function": "findOne",
+        "collection": "Entity",
+        "filter": {
+          "entityName": "op1"
+        },
+        "projection": {
+          "_id": 0,
+          "entityId": 1,
+          "entityDesc": 1,
+          "attributeTemplate": 1
+        },
+        "output": "entity"
+      }
+    },
+    {
+      "function": "lookup",
+      "logic": {
+        "id": "getInstances",
+        "function": "lookup",
+        "from": "Instance",
+        "localField": "$entity.entityId",
+        "foreignField": "entityLookupId",
+        "projection": {
+          "_id": 0,
+          "instanceId": 1
+        },
+        "output": "instances"
+      }
+    },
+    {
+      "function": "aggregate",
+      "logic": {
+        "id": "attributeSets",
+        "function": "aggregate",
+        "collection": "Attributes",
+        "pipeline": [
+          {
+            "$match": {
+              "instanceId": {
+                "$in": "$instances.instanceId"
+              }
+            }
+          },
+          {
+            "$project": {
+              "_id": 0,
+              "instanceId": 1,
+              "attributeName": 1,
+              "value": 1
+            }
+          },
+          {
+            "$group": {
+              "_id": "$instanceId",
+              "attributes": {
+                "$push": {
+                  "k": "$attributeName",
+                  "v": "$value"
+                }
+              }
+            }
+          },
+          {
+            "$project": {
+              "_id": 1,
+              "attributes": {
+                "$arrayToObject": "$attributes"
+              }
+            }
+          },
+          {
+            "$replaceRoot": {
+              "newRoot": {
+                "$mergeObjects": [
+                  {
+                    "_id": "$_id"
+                  },
+                  "$attributes"
+                ]
+              }
+            }
+          }
+        ],
+        "output": "attributeSets"
+      }
+    }
+  ],
+  "createdOn": {
+    "$date": "2025-09-02T08:01:21.242Z"
+  }
+}
+
+
+
+
+
+
+Activity Engine:
+{
+  "_id": {
+    "$oid": "68aedb735ec07069b4edcd69"
+  },
+  "type": "Activity Engine",
+  "templateId": "68aedb735ec07069b4edcd69",
+  "templateName": "Template2",
+  "templateDesc": "activity template",
+  "workflowSteps": [
+    {
+      "order": 1,
+      "stepId": {
+        "step1": "6880d1c41cec2e05fc2f5f17"
+      }
+    },
+    {
+      "order": 2,
+      "stepId": {
+        "step2": "6880d25eaa265d330bb9141c"
+      }
+    },
+    {
+      "order": 3,
+      "stepId": {
+        "step3": "6880d263aa265d330bb9141d",
+        "step4": "6880d268aa265d330bb9141e"
+      }
+    },
+    {
+      "order": 4,
+      "stepId": {
+        "step5": "6886077b53215581d69d2539"
+      }
+    }
+  ],
+  "createdOn": {
+    "$date": "2025-08-27T10:18:27.514Z"
+  }
+}

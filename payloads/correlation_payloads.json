@@ -1,0 +1,497 @@
+{
+  "correlationRoutes": {
+    "1_postCorrelation": {
+      "url": "POST /calc/postCorrelation",
+      "description": "Create a new correlation template",
+      "requestPayload": {
+        "correlationName": "entityLookupExample",
+        "correlationDesc": "Example entity lookup correlation",
+        "inputJsonSchema": {
+          "required": ["entityName"],
+          "properties": [
+            {
+              "name": "entityName",
+              "isrequired": true,
+              "type": "String"
+            }
+          ]
+        },
+        "outputJsonSchema": {
+          "required": ["entity", "instances"],
+          "properties": [
+            {
+              "name": "entity",
+              "isrequired": true,
+              "type": "Object"
+            },
+            {
+              "name": "instances",
+              "isrequired": true,
+              "type": "Array"
+            }
+          ]
+        },
+        "internalJsonSchema": {
+          "pipelineSteps": [
+            {
+              "function": "findOne",
+              "logic": {
+                "id": "getEntity",
+                "function": "findOne",
+                "collection": "Entity",
+                "filter": {
+                  "entityName": "$params.entityName"
+                },
+                "projection": {
+                  "_id": 0,
+                  "entityId": 1,
+                  "entityName": 1
+                },
+                "output": "entity"
+              }
+            }
+          ],
+          "pipelineStatement": "entity lookup example"
+        },
+        "jsLogic": null
+      },
+      "successResponse": {
+        "token": "200",
+        "correlation": {
+          "insertedId": "ObjectId",
+          "correlationId": "generated-correlation-id",
+          "correlationName": "entityLookupExample"
+        }
+      },
+      "errorResponse": {
+        "token": "400",
+        "response": "Name with the provided correlation template already exists"
+      }
+    },
+
+    "2_executeCorrelationByName": {
+      "url": "POST /calc/executeCorrelationByName",
+      "description": "Execute correlation by name or pipeline statement",
+      "requestPayload": {
+        "correlationName": "entityLookupExample",
+        "inputParameters": {
+          "entityName": "PUMP"
+        }
+      },
+      "alternativePayload": {
+        "pipelineStatement": "entity lookup example",
+        "inputParameters": {
+          "entityName": "PUMP"
+        }
+      },
+      "successResponse": {
+        "token": "200",
+        "response": "Correlation executed successfully",
+        "identifier": "entityLookupExample",
+        "result": {
+          "ctx": {
+            "entity": {
+              "entityId": "pump-001",
+              "entityName": "PUMP"
+            }
+          },
+          "ctxId": {
+            "entity": {
+              "collection": "Entity",
+              "ids": "document-id"
+            }
+          },
+          "ctxDisplayCompMap": {},
+          "ctxDisplayComp": []
+        },
+        "timestamp": "2025-01-XX..."
+      },
+      "errorResponse": {
+        "token": "500",
+        "response": "Correlation execution failed",
+        "error": "Error details...",
+        "timestamp": "2025-01-XX..."
+      }
+    },
+
+    "3_correlationEngine": {
+      "url": "POST /calc/correlationEngine",
+      "description": "Enhanced correlation execution engine",
+      "requestPayload": {
+        "identifier": "entityLookupExample",
+        "inputJsonSchema": {
+          "entityName": "PUMP"
+        },
+        "executionMode": "pipeline"
+      },
+      "successResponse": {
+        "token": "200",
+        "response": "Correlation executed successfully",
+        "result": {
+          "ctx": {},
+          "ctxId": {},
+          "ctxDisplayCompMap": {},
+          "ctxDisplayComp": []
+        },
+        "executionMode": "pipeline",
+        "timestamp": "2025-01-XX..."
+      }
+    },
+
+    "4_correlationJs": {
+      "url": "POST /calc/correlationJs",
+      "description": "Execute JavaScript code with optional template support",
+      "standalonePayload": {
+        "jsCode": "const result = { message: 'Hello World', timestamp: new Date() }; return result;",
+        "useTemplate": false
+      },
+      "templatePayload": {
+        "jsCode": "const data = await correlationTemplate('entityLookupExample', { entityName: 'PUMP' }); return { success: true, data: data.ctx };",
+        "useTemplate": true,
+        "templateIdentifier": "entityLookupExample",
+        "inputParameters": {
+          "entityName": "PUMP"
+        }
+      },
+      "successResponse": {
+        "output": {
+          "message": "Hello World",
+          "timestamp": "2025-01-XX..."
+        },
+        "executionType": "standalone",
+        "timestamp": "2025-01-XX..."
+      }
+    },
+
+    "5_previewCorrelationStages": {
+      "url": "POST /calc/previewCorrelationStages",
+      "description": "Preview execution of correlation stages",
+      "executeAllPayload": {
+        "inputJsonSchema": {
+          "entityName": "PUMP"
+        },
+        "stages": [
+          {
+            "function": "findOne",
+            "logic": {
+              "id": "getEntity",
+              "function": "findOne",
+              "collection": "Entity",
+              "filter": {
+                "entityName": "$params.entityName"
+              },
+              "projection": {
+                "_id": 0,
+                "entityId": 1,
+                "entityName": 1
+              },
+              "output": "entity"
+            }
+          },
+          {
+            "function": "find",
+            "logic": {
+              "id": "getInstances",
+              "function": "find",
+              "collection": "Instance",
+              "filter": {
+                "entityLookupId": "$entity.entityId"
+              },
+              "output": "instances"
+            }
+          }
+        ],
+        "executeAll": true
+      },
+      "singleStagePayload": {
+        "inputJsonSchema": {
+          "entityName": "PUMP"
+        },
+        "stages": [
+          {
+            "function": "findOne",
+            "logic": {
+              "id": "getEntity",
+              "function": "findOne",
+              "collection": "Entity",
+              "filter": {
+                "entityName": "$params.entityName"
+              },
+              "output": "entity"
+            }
+          }
+        ],
+        "executeAll": false,
+        "stageIndex": 0
+      },
+      "successResponse": {
+        "token": "200",
+        "response": "Correlation stages executed successfully",
+        "result": {
+          "ctx": {
+            "entity": {
+              "entityId": "pump-001",
+              "entityName": "PUMP"
+            }
+          },
+          "ctxId": {},
+          "ctxDisplayCompMap": {},
+          "ctxDisplayComp": []
+        },
+        "executionInfo": {
+          "executedStages": 2,
+          "stagesExecuted": [
+            {
+              "index": 0,
+              "id": "getEntity",
+              "function": "findOne"
+            },
+            {
+              "index": 1,
+              "id": "getInstances",
+              "function": "find"
+            }
+          ]
+        },
+        "timestamp": "2025-01-XX..."
+      }
+    },
+
+    "6_getStageInfo": {
+      "url": "POST /calc/getStageInfo",
+      "description": "Get information about correlation stages",
+      "requestPayload": {
+        "stages": [
+          {
+            "function": "findOne",
+            "logic": {
+              "id": "getEntity",
+              "function": "findOne",
+              "collection": "Entity",
+              "filter": {
+                "entityName": "$params.entityName"
+              },
+              "output": "entity"
+            }
+          },
+          {
+            "function": "find",
+            "logic": {
+              "id": "getInstances",
+              "function": "find",
+              "collection": "Instance",
+              "filter": {
+                "entityLookupId": "$entity.entityId"
+              },
+              "output": "instances"
+            }
+          }
+        ]
+      },
+      "successResponse": {
+        "token": "200",
+        "response": "Stage information retrieved successfully",
+        "totalStages": 2,
+        "stages": [
+          {
+            "index": 0,
+            "id": "getEntity",
+            "function": "findOne",
+            "collection": "Entity",
+            "output": "entity",
+            "dependencies": []
+          },
+          {
+            "index": 1,
+            "id": "getInstances",
+            "function": "find",
+            "collection": "Instance",
+            "output": "instances",
+            "dependencies": ["entity"]
+          }
+        ],
+        "timestamp": "2025-01-XX..."
+      }
+    },
+
+    "7_validateCorrelationTemplate": {
+      "url": "POST /calc/validateCorrelationTemplate",
+      "description": "Validate correlation template before saving",
+      "requestPayload": {
+        "internalJsonSchema": {
+          "pipelineSteps": [
+            {
+              "function": "findOne",
+              "logic": {
+                "id": "getEntity",
+                "function": "findOne",
+                "collection": "Entity",
+                "filter": {
+                  "entityName": "$params.entityName"
+                },
+                "output": "entity"
+              }
+            }
+          ]
+        },
+        "jsLogic": "const data = await correlationTemplate('test', params); return { validated: true };",
+        "inputJsonSchema": {
+          "required": ["entityName"],
+          "properties": [
+            {
+              "name": "entityName",
+              "isrequired": true,
+              "type": "String"
+            }
+          ]
+        }
+      },
+      "successResponse": {
+        "token": "200",
+        "response": "Template validation completed",
+        "validation": {
+          "isValid": true,
+          "errors": [],
+          "warnings": []
+        },
+        "timestamp": "2025-01-XX..."
+      },
+      "errorResponse": {
+        "token": "200",
+        "response": "Template validation completed",
+        "validation": {
+          "isValid": false,
+          "errors": [
+            "Step 0: Missing collection for findOne"
+          ],
+          "warnings": [
+            "Step 1: No output key specified"
+          ]
+        },
+        "timestamp": "2025-01-XX..."
+      }
+    },
+
+    "8_getCorrelationList": {
+      "url": "POST /calc/getCorrelationList",
+      "description": "Get list of correlation templates with optional filtering",
+      "requestPayload": {
+        "appId": "your-app-id",
+        "orgId": "your-org-id"
+      },
+      "emptyFilterPayload": {},
+      "successResponse": {
+        "correlationList": [
+          {
+            "_id": "ObjectId",
+            "correlationId": "correlation-id-1",
+            "correlationName": "entityLookupExample",
+            "correlationDesc": "Example entity lookup correlation",
+            "inputJsonSchema": {},
+            "outputJsonSchema": {},
+            "internalJsonSchema": {},
+            "createdOn": "2025-01-XX..."
+          }
+        ]
+      }
+    }
+  },
+
+  "commonPayloadPatterns": {
+    "parameterResolution": {
+      "description": "How parameters are resolved in filters",
+      "examples": {
+        "$params.entityName": "Resolves to inputJsonSchema.entityName value",
+        "$entity.entityId": "Resolves to ctx.entity.entityId value",
+        "$instances.instanceId": "Maps array to array of instanceId values",
+        "literal": "Used as literal string value"
+      }
+    },
+    
+    "pipelineStepStructure": {
+      "description": "Standard structure for pipeline steps",
+      "template": {
+        "function": "findOne|find|aggregate|lookup|count|sum|joinAttributes",
+        "logic": {
+          "id": "unique-step-id",
+          "function": "same-as-parent-function",
+          "collection": "CollectionName",
+          "filter": {},
+          "projection": {},
+          "output": "contextKey"
+        }
+      }
+    },
+
+    "supportedFunctions": {
+      "findOne": {
+        "description": "Find single document",
+        "requiredFields": ["collection", "filter"],
+        "optionalFields": ["projection", "output"]
+      },
+      "find": {
+        "description": "Find multiple documents",
+        "requiredFields": ["collection"],
+        "optionalFields": ["filter", "projection", "sort", "limit", "output"]
+      },
+      "aggregate": {
+        "description": "MongoDB aggregation pipeline",
+        "requiredFields": ["collection", "pipeline"],
+        "optionalFields": ["output"]
+      },
+      "lookup": {
+        "description": "Join with another collection",
+        "requiredFields": ["from", "localField", "foreignField"],
+        "optionalFields": ["pipelineFilter", "projection", "output"]
+      },
+      "count": {
+        "description": "Count documents",
+        "requiredFields": ["collection"],
+        "optionalFields": ["filter", "output"]
+      },
+      "sum": {
+        "description": "Sum field values",
+        "requiredFields": ["collection", "field"],
+        "optionalFields": ["filter", "output"]
+      },
+      "joinAttributes": {
+        "description": "Join arrays in memory",
+        "requiredFields": ["left", "right", "localField", "foreignField"],
+        "optionalFields": ["mergeFields", "filter", "projection", "output"]
+      }
+    }
+  },
+
+  "errorCodes": {
+    "400": {
+      "description": "Bad Request",
+      "commonCauses": [
+        "Missing required fields",
+        "Invalid payload structure",
+        "Template name already exists"
+      ]
+    },
+    "404": {
+      "description": "Not Found",
+      "commonCauses": [
+        "Correlation template not found",
+        "Invalid correlation ID"
+      ]
+    },
+    "500": {
+      "description": "Internal Server Error",
+      "commonCauses": [
+        "Database connection failed",
+        "Pipeline execution error",
+        "JavaScript execution error"
+      ]
+    }
+  },
+
+  "usageNotes": {
+    "parameterHandling": "Use inputJsonSchema for previewCorrelationStages, inputParameters for executeCorrelationByName",
+    "templateResolution": "Parameters can be referenced as $params.name, direct names, or context variables like $entity.field",
+    "pipelineExecution": "Steps execute sequentially, each step's output becomes available to subsequent steps",
+    "errorDebugging": "Use previewCorrelationStages with single stages to debug issues step by step"
+  }
+}
